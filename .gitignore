@@ -1,0 +1,56 @@
+# =========================
+# Flutter
+# =========================
+
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/.pub-cache/
+frontend/.pub/
+frontend/coverage/
+frontend/.idea/
+frontend/*.iml
+
+# Flutter generated files
+frontend/android/app/debug/
+frontend/android/app/profile/
+frontend/android/app/release/
+
+# =========================
+# Node.js
+# =========================
+
+backend/node_modules/
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+
+# =========================
+# Environment variables
+# =========================
+
+.env
+*.env
+backend/.env
+
+# =========================
+# IDE
+# =========================
+
+.idea/
+.vscode/
+
+# =========================
+# OS
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+
+*.log

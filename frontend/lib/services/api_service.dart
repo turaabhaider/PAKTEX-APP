@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -12,6 +13,44 @@ class ApiService {
     'Content-Type': 'application/json',
     if (token != null) 'Authorization': 'Bearer $token',
   };
+
+  // ============================================================
+  // AUTH - REGISTER
+  // ============================================================
+
+  Future<Map<String, dynamic>> register({
+    required String name,
+    required String email,
+    required String password,
+    String? position,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/register'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+        'position': position,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return Map<String, dynamic>.from(data);
+    }
+
+    throw Exception(
+      data['message'] ?? 'Registration failed',
+    );
+  }
+
+  // ============================================================
+  // AUTH - LOGIN
+  // ============================================================
 
   Future<Map<String, dynamic>> login(
       String email,
@@ -32,13 +71,22 @@ class ApiService {
 
     if (response.statusCode == 200) {
       token = data['token'];
-      currentUser = Map<String, dynamic>.from(data['user']);
+
+      currentUser = Map<String, dynamic>.from(
+        data['user'],
+      );
 
       return data;
     }
 
-    throw Exception(data['message'] ?? 'Login failed');
+    throw Exception(
+      data['message'] ?? 'Login failed',
+    );
   }
+
+  // ============================================================
+  // USERS
+  // ============================================================
 
   Future<List<dynamic>> getUsers() async {
     final response = await http.get(
@@ -52,7 +100,9 @@ class ApiService {
       return data;
     }
 
-    throw Exception(data['message'] ?? 'Failed to load users');
+    throw Exception(
+      data['message'] ?? 'Failed to load users',
+    );
   }
 
   Future<Map<String, dynamic>> getUser(int id) async {
@@ -67,7 +117,9 @@ class ApiService {
       return Map<String, dynamic>.from(data);
     }
 
-    throw Exception(data['message'] ?? 'Failed to load user');
+    throw Exception(
+      data['message'] ?? 'Failed to load user',
+    );
   }
 
   Future<void> createUser({
@@ -92,7 +144,9 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 201) {
-      throw Exception(data['message'] ?? 'Failed to create user');
+      throw Exception(
+        data['message'] ?? 'Failed to create user',
+      );
     }
   }
 
@@ -117,7 +171,9 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Failed to update user');
+      throw Exception(
+        data['message'] ?? 'Failed to update user',
+      );
     }
 
     if (currentUser?['id'] == id) {
@@ -140,9 +196,15 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Failed to delete user');
+      throw Exception(
+        data['message'] ?? 'Failed to delete user',
+      );
     }
   }
+
+  // ============================================================
+  // ATTENDANCE
+  // ============================================================
 
   Future<List<dynamic>> getTodayAttendance() async {
     final response = await http.get(
@@ -187,7 +249,9 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 201) {
-      throw Exception(data['message'] ?? 'Check-in failed');
+      throw Exception(
+        data['message'] ?? 'Check-in failed',
+      );
     }
   }
 
@@ -200,9 +264,15 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Check-out failed');
+      throw Exception(
+        data['message'] ?? 'Check-out failed',
+      );
     }
   }
+
+  // ============================================================
+  // TASKS
+  // ============================================================
 
   Future<List<dynamic>> getTasks() async {
     final response = await http.get(
@@ -216,7 +286,9 @@ class ApiService {
       return data;
     }
 
-    throw Exception(data['message'] ?? 'Failed to load tasks');
+    throw Exception(
+      data['message'] ?? 'Failed to load tasks',
+    );
   }
 
   Future<Map<String, dynamic>> getTask(int id) async {
@@ -231,7 +303,9 @@ class ApiService {
       return Map<String, dynamic>.from(data);
     }
 
-    throw Exception(data['message'] ?? 'Failed to load task');
+    throw Exception(
+      data['message'] ?? 'Failed to load task',
+    );
   }
 
   Future<void> createTask({
@@ -254,7 +328,9 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 201) {
-      throw Exception(data['message'] ?? 'Failed to create task');
+      throw Exception(
+        data['message'] ?? 'Failed to create task',
+      );
     }
   }
 
@@ -281,7 +357,9 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Failed to update task');
+      throw Exception(
+        data['message'] ?? 'Failed to update task',
+      );
     }
   }
 
@@ -294,14 +372,24 @@ class ApiService {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Failed to delete task');
+      throw Exception(
+        data['message'] ?? 'Failed to delete task',
+      );
     }
   }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
 
   static void logout() {
     token = null;
     currentUser = null;
   }
+
+  // ============================================================
+  // ADMIN
+  // ============================================================
 
   static bool get isAdmin {
     return currentUser?['role'] == 'admin';

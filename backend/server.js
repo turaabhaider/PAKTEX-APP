@@ -17,17 +17,12 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
-    res.json({
-        message: 'Paktex API is running',
-    });
+    res.json({ message: 'Paktex API is running' });
 });
 
 app.get('/health', async (req, res) => {
     try {
-        const [result] = await db.query(
-            'SELECT 1 AS connected'
-        );
-
+        const [result] = await db.query('SELECT 1 AS connected');
         res.json({
             status: 'ok',
             server: 'healthy',
@@ -36,13 +31,11 @@ app.get('/health', async (req, res) => {
         });
     } catch (error) {
         console.error('DATABASE ERROR:', error);
-
         res.status(500).json({
             status: 'error',
             server: 'healthy',
             database: 'disconnected',
             error: error.message || String(error),
-            code: error.code || null,
         });
     }
 });
@@ -53,58 +46,50 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/tasks', taskRoutes);
 
 app.use((req, res) => {
-    res.status(404).json({
-        message: 'Route not found',
-    });
+    res.status(404).json({ message: 'Route not found' });
 });
 
 async function updateDatabase() {
     try {
-        // 1. Ensure password column exists in users table
-        const [userColumns] = await db.query(
-            `
-            SELECT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'users'
-            AND COLUMN_NAME = 'password'
-            `
+        // 1. Ensure password column in users
+        const [userCols] = await db.query(
+            `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'password'`
         );
-
-        if (userColumns.length === 0) {
-            console.log('password column missing in users. Adding it...');
+        if (userCols.length === 0) {
             await db.query(`ALTER TABLE users ADD COLUMN password VARCHAR(255) NULL`);
-            console.log('password column added successfully.');
-        } else {
-            console.log('password column already exists.');
+            console.log('password column added.');
         }
 
-        // 2. Ensure assigned_by column exists in tasks table
-        const [taskColumns] = await db.query(
-            `
-            SELECT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'tasks'
-            AND COLUMN_NAME = 'assigned_by'
-            `
+        // 2. Ensure assigned_by column in tasks
+        const [assignedByCols] = await db.query(
+            `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'assigned_by'`
         );
-
-        if (taskColumns.length === 0) {
-            console.log('assigned_by column missing in tasks. Adding it...');
+        if (assignedByCols.length === 0) {
             await db.query(`ALTER TABLE tasks ADD COLUMN assigned_by INT NULL`);
-            console.log('assigned_by column added successfully.');
-        } else {
-            console.log('assigned_by column already exists.');
+            console.log('assigned_by column added.');
         }
 
-        // 3. Set zeekhi.work@gmail.com as admin on startup
-        const [result] = await db.query(
-            `UPDATE users SET role = 'admin' WHERE email = ?`,
-            ['zeekhi.work@gmail.com']
+        // 3. Ensure progress column in tasks
+        const [progressCols] = await db.query(
+            `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'progress'`
         );
-        console.log(`Admin role updated successfully. Rows affected: ${result.affectedRows}`);
+        if (progressCols.length === 0) {
+            await db.query(`ALTER TABLE tasks ADD COLUMN progress INT DEFAULT 0`);
+            console.log('progress column added.');
+        }
 
+        // 4. Modify created_by to accept NULL values
+        const [createdByCols] = await db.query(
+            `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'created_by'`
+        );
+        if (createdByCols.length > 0) {
+            await db.query(`ALTER TABLE tasks MODIFY COLUMN created_by INT NULL`);
+            console.log('created_by column modified to allow NULL.');
+        }
+
+        // 5. Update admin role
+        await db.query(`UPDATE users SET role = 'admin' WHERE email = ?`, ['zeekhi.work@gmail.com']);
+        console.log('Admin role updated successfully.');
     } catch (error) {
         console.error('DATABASE MIGRATION ERROR:', error);
     }
@@ -112,7 +97,6 @@ async function updateDatabase() {
 
 async function startServer() {
     await updateDatabase();
-
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Paktex server running on port ${PORT}`);
     });

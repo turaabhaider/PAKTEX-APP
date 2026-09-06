@@ -2,6 +2,61 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const generateToken = require('../utils/generateToken');
 
+const register = async (req, res) => {
+    try {
+        const { name, email, password, position } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                message: 'Name, email and password are required',
+            });
+        }
+
+        const [existingUsers] = await db.query(
+            'SELECT id FROM users WHERE email = ? LIMIT 1',
+            [email]
+        );
+
+        if (existingUsers.length > 0) {
+            return res.status(409).json({
+                message: 'Email already exists',
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const [result] = await db.query(
+            `INSERT INTO users
+            (name, email, password, role, position)
+            VALUES (?, ?, ?, ?, ?)`,
+            [
+                name,
+                email,
+                hashedPassword,
+                'employee',
+                position || 'Employee',
+            ]
+        );
+
+        res.status(201).json({
+            message: 'Account created successfully',
+            user: {
+                id: result.insertId,
+                name,
+                email,
+                role: 'employee',
+                position: position || 'Employee',
+            },
+        });
+    } catch (error) {
+        console.error('REGISTER ERROR:', error);
+
+        res.status(500).json({
+            message: 'Server error',
+        });
+    }
+};
+
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -59,5 +114,6 @@ const login = async (req, res) => {
 };
 
 module.exports = {
+    register,
     login,
 };

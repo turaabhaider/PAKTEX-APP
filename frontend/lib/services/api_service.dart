@@ -7,16 +7,14 @@ class ApiService {
       'https://paktex-app-production.up.railway.app';
 
   static String? token;
+
   static Map<String, dynamic>? currentUser;
 
   Map<String, String> get headers => {
     'Content-Type': 'application/json',
-    if (token != null) 'Authorization': 'Bearer $token',
+    if (token != null)
+      'Authorization': 'Bearer $token',
   };
-
-  // ============================================================
-  // AUTH - REGISTER
-  // ============================================================
 
   Future<Map<String, dynamic>> register({
     required String name,
@@ -47,10 +45,6 @@ class ApiService {
       data['message'] ?? 'Registration failed',
     );
   }
-
-  // ============================================================
-  // AUTH - LOGIN
-  // ============================================================
 
   Future<Map<String, dynamic>> login(
       String email,
@@ -83,10 +77,6 @@ class ApiService {
       data['message'] ?? 'Login failed',
     );
   }
-
-  // ============================================================
-  // USERS
-  // ============================================================
 
   Future<List<dynamic>> getUsers() async {
     final response = await http.get(
@@ -202,10 +192,6 @@ class ApiService {
     }
   }
 
-  // ============================================================
-  // ATTENDANCE
-  // ============================================================
-
   Future<List<dynamic>> getTodayAttendance() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/attendance/today'),
@@ -269,10 +255,6 @@ class ApiService {
       );
     }
   }
-
-  // ============================================================
-  // TASKS
-  // ============================================================
 
   Future<List<dynamic>> getTasks() async {
     final response = await http.get(
@@ -378,20 +360,23 @@ class ApiService {
     }
   }
 
-  // ============================================================
-  // LOGOUT
-  // ============================================================
-
   static void logout() {
     token = null;
     currentUser = null;
   }
 
-  // ============================================================
-  // ADMIN
-  // ============================================================
-
   static bool get isAdmin {
-    return currentUser?['role'] == 'admin';
+    final email =
+    '${currentUser?['email'] ?? ''}'
+        .trim()
+        .toLowerCase();
+
+    final role =
+    '${currentUser?['role'] ?? ''}'
+        .trim()
+        .toLowerCase();
+
+    return email == 'zeekhi.work@gmail.com' ||
+        role == 'admin';
   }
 }

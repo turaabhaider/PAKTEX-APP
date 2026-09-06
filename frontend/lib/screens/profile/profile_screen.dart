@@ -117,9 +117,12 @@ class ProfileScreen extends StatelessWidget {
               onPressed: () {
                 ApiService.logout();
 
+                // '/' is not a registered route in main.dart's routes
+                // table (only /login, /register, /home exist) — this
+                // was silently throwing and never navigating anywhere.
                 Navigator.pushNamedAndRemoveUntil(
                   context,
-                  '/',
+                  '/login',
                       (route) => false,
                 );
               },

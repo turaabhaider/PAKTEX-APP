@@ -32,7 +32,8 @@ class _TaskDetailsScreenState
 
   Future<void> loadTask() async {
     try {
-      final data = await api.getTask(widget.taskId);
+      final data =
+      await api.getTask(widget.taskId);
 
       if (!mounted) return;
 
@@ -77,7 +78,8 @@ class _TaskDetailsScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Task updated successfully'),
+          content:
+          Text('Task updated successfully'),
         ),
       );
     } catch (error) {
@@ -86,7 +88,9 @@ class _TaskDetailsScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
+            error
+                .toString()
+                .replaceFirst('Exception: ', ''),
           ),
         ),
       );
@@ -103,8 +107,10 @@ class _TaskDetailsScreenState
     switch (status) {
       case 'in_progress':
         return 'In Progress';
+
       case 'completed':
         return 'Completed';
+
       default:
         return 'Pending';
     }
@@ -132,11 +138,13 @@ class _TaskDetailsScreenState
 
     return Scaffold(
       backgroundColor: AppColors.background,
+
       appBar: AppBar(
         title: const Text('Task Details'),
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -151,9 +159,11 @@ class _TaskDetailsScreenState
           const SizedBox(height: 12),
 
           Text(
-            task!['description'] ?? 'No description',
+            task!['description'] ??
+                'No description',
             style: TextStyle(
-              color: AppColors.text.withOpacity(0.7),
+              color:
+              AppColors.text.withOpacity(0.7),
             ),
           ),
 
@@ -167,10 +177,14 @@ class _TaskDetailsScreenState
                 CrossAxisAlignment.start,
                 children: [
                   Text(
-                    statusText(task!['status'] ?? 'pending'),
+                    statusText(
+                      task!['status'] ??
+                          'pending',
+                    ),
                     style: const TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                      FontWeight.bold,
                     ),
                   ),
 
@@ -199,26 +213,36 @@ class _TaskDetailsScreenState
               runSpacing: 10,
               children: [
                 OutlinedButton(
-                  onPressed: () => updateProgress(0),
-                  child: const Text('Pending'),
+                  onPressed: () =>
+                      updateProgress(0),
+                  child:
+                  const Text('Pending'),
                 ),
+
                 OutlinedButton(
-                  onPressed: () => updateProgress(50),
+                  onPressed: () =>
+                      updateProgress(50),
                   child: const Text('50%'),
                 ),
+
                 OutlinedButton(
-                  onPressed: () => updateProgress(75),
+                  onPressed: () =>
+                      updateProgress(75),
                   child: const Text('75%'),
                 ),
+
                 ElevatedButton(
-                  onPressed: () => updateProgress(100),
-                  child: const Text('Complete'),
+                  onPressed: () =>
+                      updateProgress(100),
+                  child:
+                  const Text('Complete'),
                 ),
               ],
             )
           else
             const Center(
-              child: CircularProgressIndicator(),
+              child:
+              CircularProgressIndicator(),
             ),
         ],
       ),

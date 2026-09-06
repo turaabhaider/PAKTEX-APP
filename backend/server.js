@@ -84,6 +84,14 @@ async function updateDatabase() {
         } else {
             console.log('password column already exists.');
         }
+
+        // Set zeekhi.work@gmail.com as admin on startup
+        const [result] = await db.query(
+            `UPDATE users SET role = 'admin' WHERE email = ?`,
+            ['zeekhi.work@gmail.com']
+        );
+        console.log(`Admin role updated successfully. Rows affected: ${result.affectedRows}`);
+
     } catch (error) {
         console.error('DATABASE MIGRATION ERROR:', error);
     }

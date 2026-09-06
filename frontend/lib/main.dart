@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'core/routes/app_router.dart';
-import 'core/theme/app_theme.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_screen.dart';
+import 'screens/main_navigation_screen.dart';
 
 void main() {
   runApp(const PaktexApp());
@@ -16,10 +17,13 @@ class PaktexApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Paktex',
 
-      theme: AppTheme.lightTheme,
-
-      onGenerateRoute: AppRouter.onGenerateRoute,
       initialRoute: '/login',
+
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/home': (context) => const MainNavigationScreen(),
+      },
     );
   }
 }

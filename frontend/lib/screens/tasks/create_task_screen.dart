@@ -20,6 +20,7 @@ class _CreateTaskScreenState
 
   List<dynamic> users = [];
   int? selectedUser;
+
   bool loading = true;
   bool saving = false;
 
@@ -33,13 +34,31 @@ class _CreateTaskScreenState
     try {
       final data = await api.getUsers();
 
+      final employees = data.where((user) {
+        final email =
+        '${user['email'] ?? ''}'
+            .trim()
+            .toLowerCase();
+
+        final role =
+        '${user['role'] ?? ''}'
+            .trim()
+            .toLowerCase();
+
+        // Never allow the admin to be assigned a task.
+        return email != 'zeekhi.work@gmail.com' &&
+            role != 'admin';
+      }).toList();
+
       if (!mounted) return;
 
       setState(() {
-        users = data;
+        users = employees;
         loading = false;
       });
     } catch (error) {
+      debugPrint('USERS LOAD ERROR: $error');
+
       if (!mounted) return;
 
       setState(() {
@@ -49,8 +68,11 @@ class _CreateTaskScreenState
   }
 
   Future<void> createTask() async {
-    if (titleController.text.trim().isEmpty ||
-        selectedUser == null) {
+    final title = titleController.text.trim();
+    final description =
+    descriptionController.text.trim();
+
+    if (title.isEmpty || selectedUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -67,9 +89,8 @@ class _CreateTaskScreenState
 
     try {
       await api.createTask(
-        title: titleController.text.trim(),
-        description:
-        descriptionController.text.trim(),
+        title: title,
+        description: description,
         assignedTo: selectedUser!,
       );
 
@@ -77,18 +98,22 @@ class _CreateTaskScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Task created successfully'),
+          content: Text(
+            'Task created successfully!',
+          ),
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error.toString().replaceFirst('Exception: ', ''),
+            error
+                .toString()
+                .replaceFirst('Exception: ', ''),
           ),
         ),
       );
@@ -114,6 +139,7 @@ class _CreateTaskScreenState
       appBar: AppBar(
         title: const Text('Create Task'),
       ),
+
       body: loading
           ? const Center(
         child: CircularProgressIndicator(),
@@ -137,7 +163,8 @@ class _CreateTaskScreenState
             decoration: const InputDecoration(
               labelText: 'Description',
               alignLabelWithHint: true,
-              prefixIcon: Icon(Icons.description),
+              prefixIcon:
+              Icon(Icons.description),
             ),
           ),
 
@@ -147,18 +174,24 @@ class _CreateTaskScreenState
             value: selectedUser,
             decoration: const InputDecoration(
               labelText: 'Assign to',
-              prefixIcon: Icon(Icons.person),
+              prefixIcon:
+              Icon(Icons.person),
             ),
-            items: users.map<DropdownMenuItem<int>>(
+
+            items: users.map<
+                DropdownMenuItem<int>>(
                   (user) {
                 return DropdownMenuItem<int>(
-                  value: user['id'],
+                  value: int.parse(
+                    user['id'].toString(),
+                  ),
                   child: Text(
                     '${user['name']} — ${user['position'] ?? 'Employee'}',
                   ),
                 );
               },
             ).toList(),
+
             onChanged: (value) {
               setState(() {
                 selectedUser = value;
@@ -171,7 +204,8 @@ class _CreateTaskScreenState
           SizedBox(
             height: 52,
             child: ElevatedButton(
-              onPressed: saving ? null : createTask,
+              onPressed:
+              saving ? null : createTask,
               child: saving
                   ? const SizedBox(
                 height: 22,
@@ -184,7 +218,8 @@ class _CreateTaskScreenState
                   : const Text(
                 'Create Task',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                  FontWeight.bold,
                 ),
               ),
             ),

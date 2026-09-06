@@ -35,6 +35,8 @@ class _TasksScreenState extends State<TasksScreen> {
         loading = false;
       });
     } catch (error) {
+      debugPrint('TASKS LOAD ERROR: $error');
+
       if (!mounted) return;
 
       setState(() {
@@ -47,8 +49,10 @@ class _TasksScreenState extends State<TasksScreen> {
     switch (status) {
       case 'in_progress':
         return 'In Progress';
+
       case 'completed':
         return 'Completed';
+
       default:
         return 'Pending';
     }
@@ -58,14 +62,19 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+
       appBar: AppBar(
         title: const Text(
           'Tasks',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
+
+      // ADMIN ONLY
       floatingActionButton: ApiService.isAdmin
           ? FloatingActionButton(
         onPressed: () async {
@@ -76,18 +85,26 @@ class _TasksScreenState extends State<TasksScreen> {
             ),
           );
 
-          loadTasks();
+          await loadTasks();
         },
         child: const Icon(Icons.add),
       )
           : null,
+
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
           : RefreshIndicator(
         onRefresh: loadTasks,
         child: tasks.isEmpty
             ? const Center(
-          child: Text('No tasks found'),
+          child: Text(
+            'No tasks found',
+            style: TextStyle(
+              fontSize: 16,
+            ),
+          ),
         )
             : ListView.builder(
           padding: const EdgeInsets.all(24),
@@ -95,39 +112,74 @@ class _TasksScreenState extends State<TasksScreen> {
           itemBuilder: (context, index) {
             final task = tasks[index];
 
+            final title =
+                task['title']?.toString() ?? '';
+
+            final description =
+                task['description']?.toString() ??
+                    'No description';
+
+            final status =
+                task['status']?.toString() ??
+                    'pending';
+
+            final progress =
+                task['progress'] ?? 0;
+
             return Card(
               margin: const EdgeInsets.only(
                 bottom: 12,
               ),
+
               child: ListTile(
                 contentPadding:
                 const EdgeInsets.all(16),
+
                 title: Text(
-                  task['title'] ?? '',
+                  title,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
+
                 subtitle: Padding(
                   padding:
-                  const EdgeInsets.only(top: 8),
+                  const EdgeInsets.only(
+                    top: 8,
+                  ),
+
                   child: Column(
                     crossAxisAlignment:
                     CrossAxisAlignment.start,
+
                     children: [
                       Text(
-                        task['description'] ??
-                            'No description',
+                        description,
                       ),
-                      const SizedBox(height: 8),
+
+                      const SizedBox(
+                        height: 8,
+                      ),
+
                       Text(
-                        '${statusLabel(task['status'] ?? 'pending')} • ${task['progress'] ?? 0}%',
+                        '${statusLabel(status)} • $progress%',
+                        style: TextStyle(
+                          color:
+                          AppColors.text
+                              .withOpacity(
+                            0.65,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                trailing:
-                const Icon(Icons.chevron_right),
+
+                trailing: const Icon(
+                  Icons.chevron_right,
+                ),
+
                 onTap: () async {
                   await Navigator.push(
                     context,
@@ -139,7 +191,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     ),
                   );
 
-                  loadTasks();
+                  await loadTasks();
                 },
               ),
             );

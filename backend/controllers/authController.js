@@ -27,7 +27,7 @@ const register = async (req, res) => {
 
         const [result] = await db.query(
             `INSERT INTO users
-            (name, email, password, role, position)
+            (name, email, password_hash, role, position)
             VALUES (?, ?, ?, ?, ?)`,
             [
                 name,
@@ -82,7 +82,7 @@ const login = async (req, res) => {
 
         const passwordMatch = await bcrypt.compare(
             password,
-            user.password
+            user.password_hash
         );
 
         if (!passwordMatch) {

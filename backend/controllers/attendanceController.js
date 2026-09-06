@@ -5,9 +5,18 @@ const checkIn = async (req, res) => {
         const userId = req.user.id;
 
         const [existing] = await db.query(
-            `SELECT id, check_in, check_out
-             FROM attendance
-             WHERE user_id = ? AND date = CURDATE()`,
+            `
+            SELECT
+                id,
+                user_id,
+                check_in,
+                check_out,
+                date
+            FROM attendance
+            WHERE user_id = ?
+              AND date = CURDATE()
+            LIMIT 1
+            `,
             [userId]
         );
 
@@ -19,21 +28,25 @@ const checkIn = async (req, res) => {
         }
 
         const [result] = await db.query(
-            `INSERT INTO attendance
-             (user_id, check_in, date)
-             VALUES (?, NOW(), CURDATE())`,
+            `
+            INSERT INTO attendance
+                (user_id, check_in, date)
+            VALUES
+                (?, NOW(), CURDATE())
+            `,
             [userId]
         );
 
-        res.status(201).json({
+        return res.status(201).json({
             message: 'Check-in successful',
             attendanceId: result.insertId,
         });
     } catch (error) {
         console.error('CHECK-IN ERROR:', error);
 
-        res.status(500).json({
-            message: 'Server error',
+        return res.status(500).json({
+            message: 'Attendance check-in server error',
+            error: error.message,
         });
     }
 };
@@ -43,10 +56,18 @@ const checkOut = async (req, res) => {
         const userId = req.user.id;
 
         const [attendance] = await db.query(
-            `SELECT *
-             FROM attendance
-             WHERE user_id = ? AND date = CURDATE()
-             LIMIT 1`,
+            `
+            SELECT
+                id,
+                user_id,
+                check_in,
+                check_out,
+                date
+            FROM attendance
+            WHERE user_id = ?
+              AND date = CURDATE()
+            LIMIT 1
+            `,
             [userId]
         );
 
@@ -63,20 +84,23 @@ const checkOut = async (req, res) => {
         }
 
         await db.query(
-            `UPDATE attendance
-             SET check_out = NOW()
-             WHERE id = ?`,
+            `
+            UPDATE attendance
+            SET check_out = NOW()
+            WHERE id = ?
+            `,
             [attendance[0].id]
         );
 
-        res.json({
+        return res.status(200).json({
             message: 'Check-out successful',
         });
     } catch (error) {
         console.error('CHECK-OUT ERROR:', error);
 
-        res.status(500).json({
-            message: 'Server error',
+        return res.status(500).json({
+            message: 'Attendance check-out server error',
+            error: error.message,
         });
     }
 };
@@ -84,46 +108,62 @@ const checkOut = async (req, res) => {
 const getTodayAttendance = async (req, res) => {
     try {
         const [attendance] = await db.query(
-            `SELECT
+            `
+            SELECT
                 a.id,
                 a.user_id,
                 u.name,
+                u.email,
                 u.position,
+                u.role,
                 a.check_in,
                 a.check_out,
                 a.date
-             FROM attendance a
-             JOIN users u ON a.user_id = u.id
-             WHERE a.date = CURDATE()
-             ORDER BY a.check_in ASC`
+            FROM attendance a
+            INNER JOIN users u
+                ON a.user_id = u.id
+            WHERE a.date = CURDATE()
+            ORDER BY a.check_in ASC
+            `
         );
 
-        res.json(attendance);
+        return res.status(200).json(attendance);
     } catch (error) {
         console.error('TODAY ATTENDANCE ERROR:', error);
 
-        res.status(500).json({
-            message: 'Server error',
+        return res.status(500).json({
+            message: 'Today attendance server error',
+            error: error.message,
         });
     }
 };
 
 const getMyAttendance = async (req, res) => {
     try {
+        const userId = req.user.id;
+
         const [attendance] = await db.query(
-            `SELECT *
-             FROM attendance
-             WHERE user_id = ?
-             ORDER BY date DESC`,
-            [req.user.id]
+            `
+            SELECT
+                id,
+                user_id,
+                check_in,
+                check_out,
+                date
+            FROM attendance
+            WHERE user_id = ?
+            ORDER BY date DESC
+            `,
+            [userId]
         );
 
-        res.json(attendance);
+        return res.status(200).json(attendance);
     } catch (error) {
         console.error('MY ATTENDANCE ERROR:', error);
 
-        res.status(500).json({
-            message: 'Server error',
+        return res.status(500).json({
+            message: 'My attendance server error',
+            error: error.message,
         });
     }
 };

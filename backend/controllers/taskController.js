@@ -1,7 +1,33 @@
 const db = require('../config/db');
 
+const ADMIN_EMAIL = 'zeekhi.work@gmail.com';
+
+const isAdmin = (req) => {
+    const email = String(req.user.email || '')
+        .trim()
+        .toLowerCase();
+
+    const role = String(req.user.role || '')
+        .trim()
+        .toLowerCase();
+
+    return email === ADMIN_EMAIL || role === 'admin';
+};
+
+
+// ===============================
+// CREATE TASK
+// ===============================
+
 const createTask = async (req, res) => {
     try {
+        // Only admins can create tasks
+        if (!isAdmin(req)) {
+            return res.status(403).json({
+                message: 'Only admins can create tasks',
+            });
+        }
+
         const {
             title,
             description,
@@ -15,8 +41,16 @@ const createTask = async (req, res) => {
             });
         }
 
+        // Check assigned user
         const [users] = await db.query(
-            'SELECT id FROM users WHERE id = ?',
+            `
+            SELECT
+                id,
+                email,
+                role
+            FROM users
+            WHERE id = ?
+            `,
             [assigned_to]
         );
 
@@ -26,10 +60,43 @@ const createTask = async (req, res) => {
             });
         }
 
+        const assignedUser = users[0];
+
+        // Do not allow tasks to be assigned to admins
+        const assignedEmail = String(
+            assignedUser.email || ''
+        )
+            .trim()
+            .toLowerCase();
+
+        const assignedRole = String(
+            assignedUser.role || ''
+        )
+            .trim()
+            .toLowerCase();
+
+        if (
+            assignedEmail === ADMIN_EMAIL ||
+            assignedRole === 'admin'
+        ) {
+            return res.status(400).json({
+                message: 'Tasks can only be assigned to employees',
+            });
+        }
+
         const [result] = await db.query(
-            `INSERT INTO tasks
-             (title, description, assigned_to, assigned_by, due_date)
-             VALUES (?, ?, ?, ?, ?)`,
+            `
+            INSERT INTO tasks
+                (
+                    title,
+                    description,
+                    assigned_to,
+                    assigned_by,
+                    due_date
+                )
+            VALUES
+                (?, ?, ?, ?, ?)
+            `,
             [
                 title,
                 description || null,
@@ -39,18 +106,24 @@ const createTask = async (req, res) => {
             ]
         );
 
-        res.status(201).json({
+        return res.status(201).json({
             message: 'Task created successfully',
             taskId: result.insertId,
         });
+
     } catch (error) {
         console.error('CREATE TASK ERROR:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Server error',
         });
     }
 };
+
+
+// ===============================
+// GET TASKS
+// ===============================
 
 const getTasks = async (req, res) => {
     try {
@@ -66,51 +139,77 @@ const getTasks = async (req, res) => {
                 t.due_date,
                 t.created_at,
                 t.updated_at,
+
                 assigned.name AS assigned_to_name,
                 creator.name AS assigned_by_name
+
             FROM tasks t
+
             JOIN users assigned
                 ON t.assigned_to = assigned.id
+
             JOIN users creator
                 ON t.assigned_by = creator.id
         `;
 
         const params = [];
 
-        if (req.user.role !== 'admin') {
-            query += ' WHERE t.assigned_to = ?';
+        // Admin sees all employee tasks
+        // Employee sees only their own tasks
+        if (!isAdmin(req)) {
+            query += `
+                WHERE t.assigned_to = ?
+            `;
+
             params.push(req.user.id);
         }
 
-        query += ' ORDER BY t.created_at DESC';
+        query += `
+            ORDER BY t.created_at DESC
+        `;
 
-        const [tasks] = await db.query(query, params);
+        const [tasks] = await db.query(
+            query,
+            params
+        );
 
-        res.json(tasks);
+        return res.status(200).json(tasks);
+
     } catch (error) {
         console.error('GET TASKS ERROR:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Server error',
         });
     }
 };
+
+
+// ===============================
+// GET SINGLE TASK
+// ===============================
 
 const getTask = async (req, res) => {
     try {
         const { id } = req.params;
 
         const [tasks] = await db.query(
-            `SELECT
+            `
+            SELECT
                 t.*,
                 assigned.name AS assigned_to_name,
                 creator.name AS assigned_by_name
-             FROM tasks t
-             JOIN users assigned
+
+            FROM tasks t
+
+            JOIN users assigned
                 ON t.assigned_to = assigned.id
-             JOIN users creator
+
+            JOIN users creator
                 ON t.assigned_by = creator.id
-             WHERE t.id = ?`,
+
+            WHERE t.id = ?
+            `,
             [id]
         );
 
@@ -122,24 +221,31 @@ const getTask = async (req, res) => {
 
         const task = tasks[0];
 
+        // Employees can only open their own tasks
         if (
-            req.user.role !== 'admin' &&
-            task.assigned_to !== req.user.id
+            !isAdmin(req) &&
+            Number(task.assigned_to) !== Number(req.user.id)
         ) {
             return res.status(403).json({
                 message: 'Access denied',
             });
         }
 
-        res.json(task);
+        return res.status(200).json(task);
+
     } catch (error) {
         console.error('GET TASK ERROR:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Server error',
         });
     }
 };
+
+
+// ===============================
+// UPDATE TASK
+// ===============================
 
 const updateTask = async (req, res) => {
     try {
@@ -154,7 +260,11 @@ const updateTask = async (req, res) => {
         } = req.body;
 
         const [tasks] = await db.query(
-            'SELECT * FROM tasks WHERE id = ?',
+            `
+            SELECT *
+            FROM tasks
+            WHERE id = ?
+            `,
             [id]
         );
 
@@ -166,27 +276,35 @@ const updateTask = async (req, res) => {
 
         const task = tasks[0];
 
+        // Employees can only update their own tasks
         if (
-            req.user.role !== 'admin' &&
-            task.assigned_to !== req.user.id
+            !isAdmin(req) &&
+            Number(task.assigned_to) !== Number(req.user.id)
         ) {
             return res.status(403).json({
                 message: 'Access denied',
             });
         }
 
-        let finalStatus = status || task.status;
+        let finalStatus =
+            status || task.status;
+
         let finalProgress =
             progress !== undefined
                 ? Number(progress)
                 : task.progress;
 
-        if (finalProgress < 0 || finalProgress > 100) {
+        // Validate progress
+        if (
+            finalProgress < 0 ||
+            finalProgress > 100
+        ) {
             return res.status(400).json({
                 message: 'Progress must be between 0 and 100',
             });
         }
 
+        // Automatically update status
         if (finalProgress === 100) {
             finalStatus = 'completed';
         } else if (
@@ -197,13 +315,18 @@ const updateTask = async (req, res) => {
         }
 
         await db.query(
-            `UPDATE tasks
-             SET title = ?,
-                 description = ?,
-                 status = ?,
-                 progress = ?,
-                 due_date = ?
-             WHERE id = ?`,
+            `
+            UPDATE tasks
+
+            SET
+                title = ?,
+                description = ?,
+                status = ?,
+                progress = ?,
+                due_date = ?
+
+            WHERE id = ?
+            `,
             [
                 title || task.title,
                 description ?? task.description,
@@ -214,24 +337,40 @@ const updateTask = async (req, res) => {
             ]
         );
 
-        res.json({
+        return res.status(200).json({
             message: 'Task updated successfully',
         });
+
     } catch (error) {
         console.error('UPDATE TASK ERROR:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Server error',
         });
     }
 };
 
+
+// ===============================
+// DELETE TASK
+// ===============================
+
 const deleteTask = async (req, res) => {
     try {
+        // Only admins can delete tasks
+        if (!isAdmin(req)) {
+            return res.status(403).json({
+                message: 'Only admins can delete tasks',
+            });
+        }
+
         const { id } = req.params;
 
         const [result] = await db.query(
-            'DELETE FROM tasks WHERE id = ?',
+            `
+            DELETE FROM tasks
+            WHERE id = ?
+            `,
             [id]
         );
 
@@ -241,17 +380,19 @@ const deleteTask = async (req, res) => {
             });
         }
 
-        res.json({
+        return res.status(200).json({
             message: 'Task deleted successfully',
         });
+
     } catch (error) {
         console.error('DELETE TASK ERROR:', error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: 'Server error',
         });
     }
 };
+
 
 module.exports = {
     createTask,

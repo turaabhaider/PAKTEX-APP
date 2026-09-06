@@ -84,6 +84,7 @@ const createTask = async (req, res) => {
             });
         }
 
+        // FIX: Added created_by to the INSERT query to resolve the database error
         const [result] = await db.query(
             `
             INSERT INTO tasks
@@ -92,15 +93,17 @@ const createTask = async (req, res) => {
                     description,
                     assigned_to,
                     assigned_by,
+                    created_by,
                     due_date
                 )
             VALUES
-                (?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?)
             `,
             [
                 title,
                 description || null,
                 assigned_to,
+                req.user.id,
                 req.user.id,
                 due_date || null,
             ]

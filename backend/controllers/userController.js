@@ -70,9 +70,13 @@ const createUser = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 12);
 
+        // Column is `password_hash`, matching register()/login() in
+        // authController.js. Previously this inserted into a `password`
+        // column, which login() never reads — any user created here
+        // would never be able to log in.
         const [result] = await db.query(
             `INSERT INTO users
-             (name, email, password, role, position)
+             (name, email, password_hash, role, position)
              VALUES (?, ?, ?, ?, ?)`,
             [
                 name,

@@ -7,6 +7,8 @@ const userRoutes = require('./routes/userRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
+const db = require('./config/db');
+
 const app = express();
 
 app.use(cors());
@@ -22,8 +24,6 @@ app.get('/', (req, res) => {
 
 app.get('/health', async (req, res) => {
     try {
-        const db = require('./config/db');
-
         const [result] = await db.query(
             'SELECT 1 AS connected'
         );
@@ -58,6 +58,43 @@ app.use((req, res) => {
     });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Paktex server running on port ${PORT}`);
-});
+async function updateDatabase() {
+    try {
+        const [columns] = await db.query(
+            `
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'users'
+            AND COLUMN_NAME = 'password'
+            `
+        );
+
+        if (columns.length === 0) {
+            console.log('password column missing. Adding it...');
+
+            await db.query(
+                `
+                ALTER TABLE users
+                ADD COLUMN password VARCHAR(255) NULL
+                `
+            );
+
+            console.log('password column added successfully.');
+        } else {
+            console.log('password column already exists.');
+        }
+    } catch (error) {
+        console.error('DATABASE MIGRATION ERROR:', error);
+    }
+}
+
+async function startServer() {
+    await updateDatabase();
+
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Paktex server running on port ${PORT}`);
+    });
+}
+
+startServer();

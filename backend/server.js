@@ -60,7 +60,8 @@ app.use((req, res) => {
 
 async function updateDatabase() {
     try {
-        const [columns] = await db.query(
+        // 1. Ensure password column exists in users table
+        const [userColumns] = await db.query(
             `
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
@@ -70,22 +71,34 @@ async function updateDatabase() {
             `
         );
 
-        if (columns.length === 0) {
-            console.log('password column missing. Adding it...');
-
-            await db.query(
-                `
-                ALTER TABLE users
-                ADD COLUMN password VARCHAR(255) NULL
-                `
-            );
-
+        if (userColumns.length === 0) {
+            console.log('password column missing in users. Adding it...');
+            await db.query(`ALTER TABLE users ADD COLUMN password VARCHAR(255) NULL`);
             console.log('password column added successfully.');
         } else {
             console.log('password column already exists.');
         }
 
-        // Set zeekhi.work@gmail.com as admin on startup
+        // 2. Ensure assigned_by column exists in tasks table
+        const [taskColumns] = await db.query(
+            `
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'tasks'
+            AND COLUMN_NAME = 'assigned_by'
+            `
+        );
+
+        if (taskColumns.length === 0) {
+            console.log('assigned_by column missing in tasks. Adding it...');
+            await db.query(`ALTER TABLE tasks ADD COLUMN assigned_by INT NULL`);
+            console.log('assigned_by column added successfully.');
+        } else {
+            console.log('assigned_by column already exists.');
+        }
+
+        // 3. Set zeekhi.work@gmail.com as admin on startup
         const [result] = await db.query(
             `UPDATE users SET role = 'admin' WHERE email = ?`,
             ['zeekhi.work@gmail.com']

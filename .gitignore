@@ -34,7 +34,8 @@ backend/yarn-error.log*
 .env
 *.env
 backend/.env
-
+backend/ node_modules/
+backend/ .env
 # =========================
 # IDE
 # =========================

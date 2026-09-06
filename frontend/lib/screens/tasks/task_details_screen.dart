@@ -1,78 +1,135 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../services/api_service.dart';
 
 class TaskDetailsScreen extends StatefulWidget {
-  final String title;
-  final String description;
-  final String status;
-  final String priority;
+  final int taskId;
 
   const TaskDetailsScreen({
     super.key,
-    required this.title,
-    required this.description,
-    required this.status,
-    required this.priority,
+    required this.taskId,
   });
 
   @override
-  State<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
+  State<TaskDetailsScreen> createState() =>
+      _TaskDetailsScreenState();
 }
 
-class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
-  late String currentStatus;
+class _TaskDetailsScreenState
+    extends State<TaskDetailsScreen> {
+  final api = ApiService();
+
+  Map<String, dynamic>? task;
+  bool loading = true;
+  bool updating = false;
 
   @override
   void initState() {
     super.initState();
-    currentStatus = widget.status;
+    loadTask();
   }
 
-  void updateStatus() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('Pending'),
-                onTap: () {
-                  setState(() {
-                    currentStatus = 'Pending';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text('In Progress'),
-                onTap: () {
-                  setState(() {
-                    currentStatus = 'In Progress';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: const Text('Completed'),
-                onTap: () {
-                  setState(() {
-                    currentStatus = 'Completed';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+  Future<void> loadTask() async {
+    try {
+      final data = await api.getTask(widget.taskId);
+
+      if (!mounted) return;
+
+      setState(() {
+        task = data;
+        loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> updateProgress(int progress) async {
+    setState(() {
+      updating = true;
+    });
+
+    try {
+      String status;
+
+      if (progress == 100) {
+        status = 'completed';
+      } else if (progress > 0) {
+        status = 'in_progress';
+      } else {
+        status = 'pending';
+      }
+
+      await api.updateTask(
+        id: widget.taskId,
+        progress: progress,
+        status: status,
+      );
+
+      await loadTask();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Task updated successfully'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
           ),
-        );
-      },
-    );
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          updating = false;
+        });
+      }
+    }
+  }
+
+  String statusText(String status) {
+    switch (status) {
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      default:
+        return 'Pending';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (task == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Task not found'),
+        ),
+      );
+    }
+
+    final progress = task!['progress'] ?? 0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -84,9 +141,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         padding: const EdgeInsets.all(24),
         children: [
           Text(
-            widget.title,
+            task!['title'] ?? '',
             style: const TextStyle(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -94,44 +151,75 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           const SizedBox(height: 12),
 
           Text(
-            widget.description,
+            task!['description'] ?? 'No description',
             style: TextStyle(
-              fontSize: 16,
-              color: AppColors.text.withOpacity(0.6),
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.flag_outlined),
-                  title: const Text('Priority'),
-                  subtitle: Text(widget.priority),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.task_alt),
-                  title: const Text('Status'),
-                  subtitle: Text(currentStatus),
-                ),
-              ],
+              color: AppColors.text.withOpacity(0.7),
             ),
           ),
 
           const SizedBox(height: 24),
 
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: updateStatus,
-              child: const Text('Update Status'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    statusText(task!['status'] ?? 'pending'),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  LinearProgressIndicator(
+                    value: progress / 100,
+                    minHeight: 10,
+                    borderRadius:
+                    BorderRadius.circular(10),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Text('$progress% complete'),
+                ],
+              ),
             ),
           ),
+
+          const SizedBox(height: 24),
+
+          if (!updating)
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton(
+                  onPressed: () => updateProgress(0),
+                  child: const Text('Pending'),
+                ),
+                OutlinedButton(
+                  onPressed: () => updateProgress(50),
+                  child: const Text('50%'),
+                ),
+                OutlinedButton(
+                  onPressed: () => updateProgress(75),
+                  child: const Text('75%'),
+                ),
+                ElevatedButton(
+                  onPressed: () => updateProgress(100),
+                  child: const Text('Complete'),
+                ),
+              ],
+            )
+          else
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
         ],
       ),
     );

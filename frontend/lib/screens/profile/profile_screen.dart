@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 
-import 'edit_profile_screen.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/api_service.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = ApiService.currentUser;
+
+    final name = user?['name'] ?? 'User';
+    final email = user?['email'] ?? '';
+    final role = user?['role'] ?? 'employee';
+    final position = user?['position'] ?? 'Not specified';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text(
+          'Profile',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
@@ -19,20 +30,20 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           const CircleAvatar(
-            radius: 45,
+            radius: 50,
             child: Icon(
               Icons.person,
-              size: 45,
+              size: 50,
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-          const Center(
+          Center(
             child: Text(
-              'Turaab Haider',
-              style: TextStyle(
-                fontSize: 24,
+              name,
+              style: const TextStyle(
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -42,73 +53,78 @@ class ProfileScreen extends StatelessWidget {
 
           Center(
             child: Text(
-              'Full Stack Developer',
+              position,
               style: TextStyle(
-                fontSize: 15,
                 color: AppColors.text.withOpacity(0.6),
               ),
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 30),
 
           Card(
-            elevation: 0,
             child: Column(
-              children: const [
+              children: [
                 ListTile(
-                  leading: Icon(Icons.email_outlined),
-                  title: Text('Email'),
-                  subtitle: Text('turaab@paktex.com'),
+                  leading: const Icon(Icons.email_outlined),
+                  title: const Text('Email'),
+                  subtitle: Text(email),
                 ),
-                Divider(),
                 ListTile(
-                  leading: Icon(Icons.business_outlined),
-                  title: Text('Department'),
-                  subtitle: Text('IT'),
+                  leading: const Icon(Icons.work_outline),
+                  title: const Text('Position'),
+                  subtitle: Text(position),
                 ),
-                Divider(),
                 ListTile(
-                  leading: Icon(Icons.work_outline),
-                  title: Text('Role'),
-                  subtitle: Text('Full Stack Developer'),
+                  leading: const Icon(
+                    Icons.admin_panel_settings_outlined,
+                  ),
+                  title: const Text('Role'),
+                  subtitle: Text(
+                    role == 'admin'
+                        ? 'Administrator'
+                        : 'Employee',
+                  ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           SizedBox(
-            width: double.infinity,
             height: 50,
-            child: ElevatedButton(
+            child: OutlinedButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const EditProfileScreen(),
+                    builder: (_) =>
+                    const EditProfileScreen(),
                   ),
                 );
               },
-              child: const Text('Edit Profile'),
+              icon: const Icon(Icons.edit),
+              label: const Text('Edit Profile'),
             ),
           ),
 
           const SizedBox(height: 12),
 
           SizedBox(
-            width: double.infinity,
             height: 50,
-            child: OutlinedButton(
+            child: ElevatedButton.icon(
               onPressed: () {
+                ApiService.logout();
+
                 Navigator.pushNamedAndRemoveUntil(
                   context,
-                  '/login',
+                  '/',
                       (route) => false,
                 );
               },
-              child: const Text('Logout'),
+              icon: const Icon(Icons.logout),
+              label: const Text('Logout'),
             ),
           ),
         ],

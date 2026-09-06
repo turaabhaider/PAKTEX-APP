@@ -1,99 +1,182 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
+import '../../services/api_service.dart';
 
-class AddEmployeeScreen extends StatelessWidget {
+class AddEmployeeScreen extends StatefulWidget {
   const AddEmployeeScreen({super.key});
+
+  @override
+  State<AddEmployeeScreen> createState() =>
+      _AddEmployeeScreenState();
+}
+
+class _AddEmployeeScreenState
+    extends State<AddEmployeeScreen> {
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final positionController = TextEditingController();
+
+  String role = 'employee';
+  bool saving = false;
+
+  Future<void> addEmployee() async {
+    if (nameController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
+        passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Name, email and password are required',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      saving = true;
+    });
+
+    try {
+      await ApiService().createUser(
+        name: nameController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text,
+        role: role,
+        position: positionController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Employee added successfully'),
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          saving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    positionController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Add Employee',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
+        title: const Text('Add Employee'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Text(
-            'New Team Member',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
+          TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              prefixIcon: Icon(Icons.person),
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
 
-          Text(
-            'Add the employee details below.',
-            style: TextStyle(
-              fontSize: 15,
-              color: AppColors.text.withOpacity(0.6),
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Full Name',
-              hintText: 'Enter full name',
-              prefixIcon: Icon(Icons.person_outline),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          const TextField(
+          TextField(
+            controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Email',
-              hintText: 'Enter email address',
-              prefixIcon: Icon(Icons.email_outlined),
+              prefixIcon: Icon(Icons.email),
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-          const TextField(
-            decoration: InputDecoration(
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Temporary Password',
+              prefixIcon: Icon(Icons.lock),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          TextField(
+            controller: positionController,
+            decoration: const InputDecoration(
+              labelText: 'Position',
+              prefixIcon: Icon(Icons.work),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          DropdownButtonFormField<String>(
+            value: role,
+            decoration: const InputDecoration(
               labelText: 'Role',
-              hintText: 'Enter employee role',
-              prefixIcon: Icon(Icons.work_outline),
+              prefixIcon: Icon(Icons.admin_panel_settings),
             ),
-          ),
-
-          const SizedBox(height: 16),
-
-          const TextField(
-            decoration: InputDecoration(
-              labelText: 'Department',
-              hintText: 'Enter department',
-              prefixIcon: Icon(Icons.business_outlined),
-            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'employee',
+                child: Text('Employee'),
+              ),
+              DropdownMenuItem(
+                value: 'admin',
+                child: Text('Admin'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  role = value;
+                });
+              }
+            },
           ),
 
           const SizedBox(height: 28),
 
           SizedBox(
-            width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text(
+              onPressed: saving ? null : addEmployee,
+              child: saving
+                  ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              )
+                  : const Text(
                 'Add Employee',
                 style: TextStyle(
-                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),

@@ -1,29 +1,104 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../services/api_service.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({super.key});
 
   @override
-  State<CreateTaskScreen> createState() => _CreateTaskScreenState();
+  State<CreateTaskScreen> createState() =>
+      _CreateTaskScreenState();
 }
 
-class _CreateTaskScreenState extends State<CreateTaskScreen> {
+class _CreateTaskScreenState
+    extends State<CreateTaskScreen> {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
 
-  String selectedPriority = 'Medium';
+  final api = ApiService();
 
-  void createTask() {
-    final title = titleController.text;
-    final description = descriptionController.text;
+  List<dynamic> users = [];
+  int? selectedUser;
+  bool loading = true;
+  bool saving = false;
 
-    print('Title: $title');
-    print('Description: $description');
-    print('Priority: $selectedPriority');
+  @override
+  void initState() {
+    super.initState();
+    loadUsers();
+  }
 
-    Navigator.pop(context);
+  Future<void> loadUsers() async {
+    try {
+      final data = await api.getUsers();
+
+      if (!mounted) return;
+
+      setState(() {
+        users = data;
+        loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> createTask() async {
+    if (titleController.text.trim().isEmpty ||
+        selectedUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Title and assigned employee are required',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      saving = true;
+    });
+
+    try {
+      await api.createTask(
+        title: titleController.text.trim(),
+        description:
+        descriptionController.text.trim(),
+        assignedTo: selectedUser!,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Task created successfully'),
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          saving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -36,129 +111,79 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Create Task',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
+        title: const Text('Create Task'),
       ),
-      body: ListView(
+      body: loading
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
+          : ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Text(
-            'New Task',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'Create and assign a task to your team.',
-            style: TextStyle(
-              fontSize: 15,
-              color: AppColors.text.withOpacity(0.6),
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          const Text(
-            'Task Title',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
           TextField(
             controller: titleController,
             decoration: const InputDecoration(
-              hintText: 'Enter task title',
-              prefixIcon: Icon(Icons.task_outlined),
+              labelText: 'Task title',
+              prefixIcon: Icon(Icons.task),
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          const Text(
-            'Description',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
 
           TextField(
             controller: descriptionController,
             maxLines: 4,
             decoration: const InputDecoration(
-              hintText: 'Describe the task',
-              prefixIcon: Icon(Icons.description_outlined),
+              labelText: 'Description',
               alignLabelWithHint: true,
+              prefixIcon: Icon(Icons.description),
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          const Text(
-            'Priority',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          DropdownButtonFormField<String>(
-            initialValue: selectedPriority,
+          DropdownButtonFormField<int>(
+            value: selectedUser,
             decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.flag_outlined),
+              labelText: 'Assign to',
+              prefixIcon: Icon(Icons.person),
             ),
-            items: const [
-              DropdownMenuItem(
-                value: 'High',
-                child: Text('High'),
-              ),
-              DropdownMenuItem(
-                value: 'Medium',
-                child: Text('Medium'),
-              ),
-              DropdownMenuItem(
-                value: 'Low',
-                child: Text('Low'),
-              ),
-            ],
+            items: users.map<DropdownMenuItem<int>>(
+                  (user) {
+                return DropdownMenuItem<int>(
+                  value: user['id'],
+                  child: Text(
+                    '${user['name']} — ${user['position'] ?? 'Employee'}',
+                  ),
+                );
+              },
+            ).toList(),
             onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  selectedPriority = value;
-                });
-              }
+              setState(() {
+                selectedUser = value;
+              });
             },
           ),
 
           const SizedBox(height: 28),
 
           SizedBox(
-            width: double.infinity,
             height: 52,
-            child: ElevatedButton.icon(
-              onPressed: createTask,
-              icon: const Icon(Icons.add_task),
-              label: const Text(
+            child: ElevatedButton(
+              onPressed: saving ? null : createTask,
+              child: saving
+                  ? const SizedBox(
+                height: 22,
+                width: 22,
+                child:
+                CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              )
+                  : const Text(
                 'Create Task',
                 style: TextStyle(
-                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),

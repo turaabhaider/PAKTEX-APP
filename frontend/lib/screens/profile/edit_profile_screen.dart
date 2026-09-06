@@ -1,178 +1,215 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
+import '../../services/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  State<EditProfileScreen> createState() =>
+      _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  final nameController = TextEditingController(
-    text: 'Turaab Haider',
-  );
+class _EditProfileScreenState
+    extends State<EditProfileScreen> {
+  late final TextEditingController nameController;
+  late final TextEditingController emailController;
+  late final TextEditingController positionController;
 
-  final emailController = TextEditingController(
-    text: 'turaab@paktex.com',
-  );
+  String role = 'employee';
+  bool saving = false;
 
-  final roleController = TextEditingController(
-    text: 'Full Stack Developer',
-  );
+  @override
+  void initState() {
+    super.initState();
 
-  final departmentController = TextEditingController(
-    text: 'IT',
-  );
+    final user = ApiService.currentUser ?? {};
 
-  void saveChanges() {
-    print('Name: ${nameController.text}');
-    print('Email: ${emailController.text}');
-    print('Role: ${roleController.text}');
-    print('Department: ${departmentController.text}');
+    nameController = TextEditingController(
+      text: user['name'] ?? '',
+    );
 
-    Navigator.pop(context);
+    emailController = TextEditingController(
+      text: user['email'] ?? '',
+    );
+
+    positionController = TextEditingController(
+      text: user['position'] ?? '',
+    );
+
+    role = user['role'] ?? 'employee';
+  }
+
+  Future<void> saveChanges() async {
+    final id = ApiService.currentUser?['id'];
+
+    if (id == null) return;
+
+    if (!ApiService.isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Only admins can update profiles with the current API',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      saving = true;
+    });
+
+    try {
+      await ApiService().updateUser(
+        id: id,
+        name: nameController.text.trim(),
+        email: emailController.text.trim(),
+        role: role,
+        position: positionController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully'),
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          saving = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    roleController.dispose();
-    departmentController.dispose();
+    positionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = ApiService.isAdmin;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
+        title: const Text('Edit Profile'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Text(
-            'Update Profile',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'Update your personal information.',
-            style: TextStyle(
-              fontSize: 15,
-              color: AppColors.text.withOpacity(0.6),
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          const Text(
-            'Full Name',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
           TextField(
             controller: nameController,
+            enabled: isAdmin,
             decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.person_outline),
-              hintText: 'Enter your name',
+              labelText: 'Name',
+              prefixIcon: Icon(Icons.person),
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          const Text(
-            'Email',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
 
           TextField(
             controller: emailController,
-            keyboardType: TextInputType.emailAddress,
+            enabled: isAdmin,
             decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.email_outlined),
-              hintText: 'Enter your email',
+              labelText: 'Email',
+              prefixIcon: Icon(Icons.email),
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          const Text(
-            'Role',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
 
           TextField(
-            controller: roleController,
+            controller: positionController,
+            enabled: isAdmin,
             decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.work_outline),
-              hintText: 'Enter your role',
+              labelText: 'Position',
+              prefixIcon: Icon(Icons.work),
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          const Text(
-            'Department',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          TextField(
-            controller: departmentController,
+          DropdownButtonFormField<String>(
+            value: role,
             decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.business_outlined),
-              hintText: 'Enter your department',
+              labelText: 'Role',
+              prefixIcon: Icon(
+                Icons.admin_panel_settings,
+              ),
             ),
+            items: const [
+              DropdownMenuItem(
+                value: 'employee',
+                child: Text('Employee'),
+              ),
+              DropdownMenuItem(
+                value: 'admin',
+                child: Text('Admin'),
+              ),
+            ],
+            onChanged: isAdmin
+                ? (value) {
+              if (value != null) {
+                setState(() {
+                  role = value;
+                });
+              }
+            }
+                : null,
           ),
 
           const SizedBox(height: 28),
 
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: saveChanges,
-              icon: const Icon(Icons.save_outlined),
-              label: const Text(
-                'Save Changes',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+          if (isAdmin)
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: saving ? null : saveChanges,
+                child: saving
+                    ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Text(
+                  'Save Changes',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            )
+          else
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Profile editing is currently restricted to administrators.',
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
